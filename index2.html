@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Défi 4 CLERIN Yann</title>
+</head>
+<body>
+    <form>
+    <input type="text" list="produits" placeholder="Entrez un produit : ">
+    <datalist id="produits"></datalist>
+    <button type="submit" id="ajouterButton">Ajouter à la liste</button>
+    <button type="reset" id="effacerButton">Effacer</button>
+    <button type="button" id="calculerButton">Calculer</button>
+    </form>
+    <p>
+      <ul id="selectedProduits"></ul>
+    </p>
+    <script>
+        let nomsProduits = [];//initialiser l'array qui contiendra les noms des articles 
+        let donneesCalcul =[];//initialiser l'array qui contient la totalité des données
+            
+        function appelApi(url) {
+  const req = new XMLHttpRequest();
+  req.open("GET", url);
+  req.onreadystatechange = function () {
+    if (req.readyState == 4 && req.status == 200) {
+      const reponseDonnees = JSON.parse(req.responseText);
+      donneesCalcul = donneesCalcul.concat(reponseDonnees.results);//remplir avec les données des résultats du JSON
+
+      const datalist = document.querySelector("#produits");//se placer dans la liste déroulante
+      reponseDonnees.results.forEach((produit) => {
+        const option = document.createElement("option");
+        option.value = produit.Nom_du_Produit_en_Français;//associer le nom contenu dans le résultat à l'option
+        datalist.appendChild(option);//ajouter l'option dans la liste  
+      });
+
+      if (reponseDonnees.next) {// Vérifier qu'il reste des pages à traiter
+        appelApi(reponseDonnees.next);// Fait l'appel avec la prochaine page, dont l'URL est contenue dans la reponse
+      }
+    } else {
+      console.log("Erreur de connexion. Status: " + req.status);
+    }
+  };
+
+  req.send();
+}
+
+    const urlDepart = "https://data.ademe.fr/data-fair/api/v1/datasets/agribalyse-31-synthese/lines?page=1&after=1&size=1000&sort=&select=Nom_du_Produit_en_Français,Score_unique_EF,Changement_climatique&format=json&html=false&q_mode=simple";// l'URL de départ doit apparaître en dehors de la fonction pour pouvoir faire l'appel API pour les autres pages 
+    appelApi(urlDepart);//Premier appel de fonction avec l'URL de départ
+    
+ 
+ const ajouterButton = document.querySelector('#ajouterButton');
+    ajouterButton.addEventListener('click', function(event) {//Ajouter le produit à la liste des produits lors du click sur "Ajouter"
+        event.preventDefault();
+        const selectedProduit = document.querySelector('input[list="produits"]').value;
+        const ul = document.querySelector('#selectedProduits');
+        const li = document.createElement('li');//Créer l'élément HTML
+        li.textContent = selectedProduit;//Ajouter le nom du produit à l'élément
+        ul.appendChild(li);//Insérer dans la liste <ul>
+    });
+
+    
+    const effacerButton = document.querySelector('#effacerButton');
+    effacerButton.addEventListener('click', function() {//Effacer la liste des produits lors du click sur le bouton "Effacer"
+        const ul = document.querySelector('#selectedProduits');
+        ul.innerHTML = '';
+    });
+    
+    const calculerButton = document.querySelector("#calculerButton");
+calculerButton.addEventListener("click", function () {// Calculer l'impact total selon les deux indicateurs et l'afficher en fin de liste 
+  const ul = document.querySelector("#selectedProduits");
+  const li = document.createElement("li");
+  let sumScoreEf = 0;
+  let sumImpact = 0;
+
+  for (let i = 0; i < ul.children.length; i++) {// Itération jusqu'à la fin de la liste
+    const produitNom = ul.children[i].textContent;//Constante qui contient le nom du produit à retrouver
+    const produitIndex = donneesCalcul.findIndex(//Création de la constante qui permet de retrouver les données correpsondant au produit
+      (produit) => produit.Nom_du_Produit_en_Français === produitNom
+    );
+    const produitDonnees = donneesCalcul[produitIndex];//Identifie le résultat correspondant dans l'array 
+
+    sumScoreEf += produitDonnees.Score_unique_EF;
+    sumImpact += produitDonnees.Changement_climatique;//Calcul des totaux
+    
+  }
+
+  li.textContent = `Total : ${sumScoreEf} (1 point équivaut à l'impact environnemental d'un européen), Impact carbone: ${sumImpact} kg de CO2`;
+  ul.appendChild(li);//Ajoute le <li> en fin de liste
+});
+
+
+   
+  </script>
+  
+  
+ 
+</body>
+</html>
